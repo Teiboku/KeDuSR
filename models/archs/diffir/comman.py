@@ -43,6 +43,8 @@ class MeanShift(nn.Conv2d):
         self.bias.requires_grad = False
 
 
+ 
+
 class Upsampler(nn.Sequential):
     def __init__(self, conv, scale, n_feat, act=False, bias=True):
         m = []
@@ -90,16 +92,19 @@ class CPEN(nn.Module):
             nn.LeakyReLU(0.1, True)
         )
         self.pixel_unshuffle = nn.PixelUnshuffle(4)
+        self.upsampler = Upsampler(default_conv, 2, 3)
 
-    def forward(self, x,gt):
-        gt0 = self.pixel_unshuffle(gt)
-        x0 = self.pixel_unshuffle(x)
-        x = torch.cat([x0, gt0], dim=1)
 
-        fea = self.E(x).squeeze(-1).squeeze(-1)
+    def forward(self, lr,ref):
+        lr = self.upsampler(lr)
+        ref0 = self.pixel_unshuffle(ref)
+        lr0 = self.pixel_unshuffle(lr)
+        
+        fea = torch.cat([lr0, ref0], dim=1)
+        fea = self.E(fea).squeeze(-1).squeeze(-1)
 
-        fea1 = self.mlp(fea)
-        return fea1
+        fea = self.mlp(fea)
+        return fea
 
 
 

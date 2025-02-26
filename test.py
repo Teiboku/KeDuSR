@@ -73,7 +73,7 @@ def main():
             else:
                 load_net_clean[k] = v
 
-        net.load_state_dict(load_net_clean, strict=True)
+        net.load_state_dict(load_net_clean, strict=False)
 
     net.eval()
 
@@ -113,7 +113,8 @@ def main():
             LR = nn.ReplicationPad2d(8)(LR)
 
             #inference
-            output = net(LR, LR_center, Ref_SIFT)
+            cpen_embedding = net.get_cpen_embedding(LR_center, Ref_SIFT)
+            output = net(LR, LR_center, Ref_SIFT, cpen_embedding)
 
             #depadding
             if expanded_h:

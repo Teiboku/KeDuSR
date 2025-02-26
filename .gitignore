@@ -137,7 +137,9 @@ Untitled.ipynb
 *.pyd
 *.pyw
 *.pyz
-*.py
 dataset.zip
 dataset/
 weights/
+inference_result/
+Dataset Description.md
+pre-trained/
