@@ -66,7 +66,7 @@ To train the KeDuSR model on DuSR-Real, run the scipts:
 python train.py --dataset_root dataset --dataset_name DuSR-Real --use_tb_logger --loss_Charbonnier
 
 # hybrid loss (DuSR-Real)
-python train.py --dataset_root dataset --dataset_name DuSR-Real --use_tb_logger --loss_Charbonnier --loss_perceptual --loss_adv
+python train.py --dataset_root dataset --dataset_name CameraFusion-Real --use_tb_logger --loss_Charbonnier --loss_perceptual --loss_adv
 
 #Resume Training
 python train.py --dataset_root dataset --dataset_name DuSR-Real --use_tb_logger --loss_Charbonnier --resume weights/20240117_232231/snapshot/net_xxx.pth --resume_optim weights/20240117_232231/snapshot/optimizer_G_xxx.pth --resume_scheduler weights/20240117_232231/snapshot/scheduler_xxx.pth

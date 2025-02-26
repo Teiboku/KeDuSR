@@ -25,7 +25,7 @@
 # # template
 
 # # Byte-compiled / optimized / DLL files
-# __pycache__/
+__pycache__/
 # *.py[cod]
 # *$py.class
 
@@ -128,3 +128,16 @@
 
 # # mypy
 # .mypy_cache/
+
+.ipynb_checkpoints/
+Untitled.ipynb
+**/__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.py
+dataset.zip
+dataset/
+weights/
