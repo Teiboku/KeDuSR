@@ -35,13 +35,14 @@ def main():
 
     parser.add_argument('--patch_size', default=128, type=int)
     parser.add_argument('--batch_size', default=4, type=int)
-    parser.add_argument('--num_workers', default=2, type=int)
+    parser.add_argument('--num_workers', default=6, type=int)
     parser.add_argument('--chunk_size', default=128, type=int) # Chunk size for inference
     parser.add_argument('--lr', default=1e-4, type=float)
     parser.add_argument('--warm_up_iter', default=10000, type=int)
     parser.add_argument('--total_iter', default=250000, type=int)
     parser.add_argument('--log_freq', default=200, type=int)
     parser.add_argument('--test_freq', default=10000, type=int) 
+    #parser.add_argument('--test_freq', default=100, type=int) 
     
     parser.add_argument('--loss_Charbonnier', action='store_true')
     parser.add_argument('--loss_perceptual', action='store_true')
