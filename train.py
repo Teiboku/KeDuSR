@@ -46,11 +46,9 @@ def main():
     
     parser.add_argument('--loss_Charbonnier', action='store_true')
     parser.add_argument('--loss_perceptual', action='store_true')
-    parser.add_argument('--loss_adv', action='store_true')
     parser.add_argument('--loss_cpen', action='store_true')
     parser.add_argument('--lambda_Charbonnier', default=1, type=float)
     parser.add_argument('--lambda_perceptual', default=1e-3, type=float)
-    parser.add_argument('--lambda_adv', default=1e-4, type=float)
     parser.add_argument('--lambda_cpen', default=1e-1, type=float)
     
     parser.add_argument('--resume', default='', type=str)             #"weights/20240117_232231/snapshot/net_xxx.pth"
