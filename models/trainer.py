@@ -16,9 +16,9 @@ from collections import OrderedDict
 import importlib
 from dataloader.dataset import TrainSet
 from crop_psnr import calculate_ssim, calculate_psnr
-from models.losses import PerceptualLoss, AdversarialLoss, CharbonnierLoss
+from models.losses import PerceptualLoss, CharbonnierLoss
 from models.archs.KeDuSR_arch import KeDuSR
-
+from models.archs.KeDuSR_arch import process_image_patches
 
 class Trainer(object):
     def __init__(self, args):
@@ -51,11 +51,6 @@ class Trainer(object):
             self.criterion_Charbonnier = CharbonnierLoss().to(self.device)
             self.lambda_Charbonnier = args.lambda_Charbonnier
             logging.info('  using Charbonnier loss...')
-
-        if args.loss_adv:
-            self.criterion_adv = AdversarialLoss(gan_k=1)
-            self.lambda_adv = args.lambda_adv
-            logging.info('  using adv loss...')
 
         if args.loss_cpen:
             self.criterion_cpen = nn.L1Loss().to(self.device)
@@ -105,15 +100,15 @@ class Trainer(object):
         self.best_psnr = 0
         self.best_ssim = 0
         # self.augmentation = False  # disenable data augmentation to warm up the encoder
-             
-        if self.args.resume != '':
-            current_iter = int(self.args.resume.split('_')[-1][:-4])
-        else:
-            current_iter = 0
+        current_iter = 0
+        #if self.args.resume != '':
+        #    current_iter = int(self.args.resume.split('_')[-1][:-4])
+        #else:
+        #    current_iter = 0
 
         loss_Charbonnier_p = 0
         loss_perceptual_p = 0
-        loss_adv_p = 0
+
         loss_d_p = 0
         loss_cpen_p = 0
         for idx_i in range(1000000):
@@ -128,12 +123,8 @@ class Trainer(object):
 
                 batch_samples = self.prepare(batch_samples)
 
-                #KeDuSR
-                cpen_embedding = self.net.get_cpen_embedding(batch_samples['lr_nearby'], batch_samples['ref'])
-                cpen_embedding_gt = self.net.get_cpen_embedding(batch_samples['lr'], batch_samples['hr'])
-
                 
-                output = self.net(batch_samples['lr'], batch_samples['lr_nearby'], batch_samples['ref'], cpen_embedding)
+                output = self.net(batch_samples['lr'], batch_samples['lr_nearby'], batch_samples['ref'])
                 
                 loss = 0
                 self.optimizer_G.zero_grad()
@@ -150,18 +141,6 @@ class Trainer(object):
                     loss_perceptual_p += perceptual_loss.item()
                     loss += perceptual_loss
 
-                if self.args.loss_adv and current_iter > self.args.warm_up_iter:
-                    adv_loss, d_loss = self.criterion_adv(output, batch_samples['hr'])
-                    adv_loss = adv_loss * self.lambda_adv
-                    loss_adv_p += adv_loss.item()
-                    loss_d_p += d_loss.item()
-                    loss += adv_loss
-
-                if self.args.loss_cpen:
-                    cpen_loss = self.criterion_cpen(cpen_embedding, cpen_embedding_gt)
-                    cpen_loss = cpen_loss * self.lambda_cpen
-                    loss_cpen_p += cpen_loss.item()
-                    loss += cpen_loss
 
                 loss.backward()
                 self.optimizer_G.step()
@@ -174,12 +153,11 @@ class Trainer(object):
 
                     if self.args.loss_perceptual:
                         loss_perceptual_p = loss_perceptual_p / self.args.log_freq
-                        loss_adv_p = loss_adv_p / self.args.log_freq
                         loss_d_p = loss_d_p / self.args.log_freq
                         loss_cpen_p = loss_cpen_p / self.args.log_freq
 
                         log_info += 'perceptual_loss:%.06f ' % (loss_perceptual_p)
-                        log_info += 'adv_loss:%.06f ' % (loss_adv_p)
+
                         log_info += 'd_loss:%.06f ' % (loss_d_p)
                         log_info += 'cpen_loss:%.06f ' % (loss_cpen_p)
             
@@ -188,7 +166,6 @@ class Trainer(object):
                             tag_scalar_dict={
                                 'Ch_loss': loss_Charbonnier_p,
                                 'perceptual_loss': loss_perceptual_p,
-                                'adv_loss': loss_adv_p,
                                 'd_loss': loss_d_p,
                                 'cpen_loss': loss_cpen_p
                             },
@@ -200,17 +177,16 @@ class Trainer(object):
                         
                     loss_Charbonnier_p = 0
                     loss_perceptual_p = 0
-                    loss_adv_p = 0
+
                     loss_d_p = 0
                     loss_cpen_p = 0
 
   
 
 
-                cpen_embedding = self.net.get_cpen_embedding(batch_samples['lr_nearby'], batch_samples['ref'])
-                cpen_embedding_gt = self.net.get_cpen_embedding(batch_samples['lr'], batch_samples['hr'])
+               
 
-                output = self.net(batch_samples['lr'], batch_samples['lr_nearby'], batch_samples['ref'], cpen_embedding_gt)
+                output = self.net(batch_samples['lr'], batch_samples['lr_nearby'], batch_samples['ref'])
                  
                 loss = 0
                 self.optimizer_G.zero_grad()
@@ -227,18 +203,7 @@ class Trainer(object):
                     loss_perceptual_p += perceptual_loss.item()
                     loss += perceptual_loss
 
-                if self.args.loss_adv and current_iter > self.args.warm_up_iter:
-                    adv_loss, d_loss = self.criterion_adv(output, batch_samples['hr'])
-                    adv_loss = adv_loss * self.lambda_adv
-                    loss_adv_p += adv_loss.item()
-                    loss_d_p += d_loss.item()
-                    loss += adv_loss
 
-                if self.args.loss_cpen:
-                    cpen_loss = self.criterion_cpen(cpen_embedding, cpen_embedding_gt)
-                    cpen_loss = cpen_loss * self.lambda_cpen
-                    loss_cpen_p += cpen_loss.item()
-                    loss += cpen_loss
 
                 loss.backward()
                 self.optimizer_G.step()
@@ -253,12 +218,12 @@ class Trainer(object):
 
                     if self.args.loss_perceptual:
                         loss_perceptual_p = loss_perceptual_p / self.args.log_freq
-                        loss_adv_p = loss_adv_p / self.args.log_freq
+
                         loss_d_p = loss_d_p / self.args.log_freq
                         loss_cpen_p = loss_cpen_p / self.args.log_freq
 
                         log_info += 'perceptual_loss:%.06f ' % (loss_perceptual_p)
-                        log_info += 'adv_loss:%.06f ' % (loss_adv_p)
+
                         log_info += 'd_loss:%.06f ' % (loss_d_p)
                         log_info += 'cpen_loss:%.06f ' % (loss_cpen_p)
             
@@ -267,7 +232,7 @@ class Trainer(object):
                             tag_scalar_dict={
                                 'Ch_loss': loss_Charbonnier_p,
                                 'perceptual_loss': loss_perceptual_p,
-                                'adv_loss': loss_adv_p,
+
                                 'd_loss': loss_d_p,
                                 'cpen_loss': loss_cpen_p
                             },
@@ -279,7 +244,7 @@ class Trainer(object):
                         
                     loss_Charbonnier_p = 0
                     loss_perceptual_p = 0
-                    loss_adv_p = 0
+
                     loss_d_p = 0
                     loss_cpen_p = 0
 
@@ -444,36 +409,11 @@ class Trainer(object):
         Ref_SIFT = batch_samples['Ref_SIFT']
         LR = batch_samples['LR']
 
-        #padding
-        sh_im = LR.size()
-        expanded_h = sh_im[-2] % self.args.chunk_size
-
-        if expanded_h:
-            expanded_h = self.args.chunk_size-expanded_h
-        expanded_w = sh_im[-1] % self.args.chunk_size
-        if expanded_w:
-            expanded_w = self.args.chunk_size - expanded_w
-
-        padexp = (0, expanded_w, 0, expanded_h)
-        LR = F.pad(input=LR, pad=padexp, mode='reflect')
-
-        LR = nn.ReplicationPad2d(8)(LR)  #torch.Size([1, 3, 448, 896]) torch.Size([1, 3, 464, 912])
+     
+        output = process_image_patches(self.net,LR, Ref_SIFT)
 
 
-        # inference
-        cpen_embedding = self.net.get_cpen_embedding(LR_center, Ref_SIFT)
-
-        output = self.net(LR, LR_center, Ref_SIFT, cpen_embedding)
-
-
-        #depadding
-        if expanded_h:
-            expanded_h = expanded_h*2
-            output = output[:, :, :-expanded_h, :]
-        if expanded_w:
-            expanded_w = expanded_w*2
-            output = output[:, :, :, :-expanded_w]
-
+  
         return output
 
 
